@@ -30,7 +30,7 @@ def calc_node_timings(T, sigma_sq, mu, eps=0.2):
 
 def calc_scores_to_optimize(x, T):
     mu, sigma = x
-    calc_scores(T, sigma=sigma, mu=mu)['cost']
+    return calc_scores(T, sigma=sigma, mu=mu)['cost']
 
 def calc_scores(T, sigma=None, mu=None):
     sigma_sq=sigma**2
@@ -81,10 +81,11 @@ if __name__=="__main__":
     parser = argparse.ArgumentParser(description='Flag outliers in a tree')
     parser.add_argument('--tree', type=str, help='tree file in newick format')
     parser.add_argument('--aln', type=str, help='alignment file in fasta format')
-    parser.add_argument('--cutoff', type=float, default=2.0, help="z-score used to flag outliers")
+    parser.add_argument('--cutoff', type=float, default=4.0, help="z-score used to flag outliers")
     parser.add_argument('--optimize', action="store_true", help="optimize sigma and mu")
     parser.add_argument('--dates', type=str, help='csv/tsv file with dates for each sequence')
-    parser.add_argument('--output', type=str, help='file for outliers')
+    parser.add_argument('--output-outliers', type=str, help='file for outliers')
+    parser.add_argument('--output-tree', type=str, help='file for pruned tree')
 
     args = parser.parse_args()
     dates = parse_dates(args.dates)
@@ -96,11 +97,12 @@ if __name__=="__main__":
     pruned_tips = prepare_tree(tt.tree)
 
     mu = tt.clock_model['slope']*tt.data.full_length
+    # magic number: allowing for slack in timing equivalent to 3 mutations
+    # this is rescaled later such that the empirical z-score distributions as variance 1
     sigma = 3/mu
     if args.optimize:
         from scipy.optimize import minimize
         x0=(mu, sigma)
-        print(calc_scores(x0, tt.tree))
         sol = minimize(calc_scores_to_optimize, x0=x0, args=(tt.tree,), method='Nelder-Mead')
         mu = sol['x'][0]
         sigma = sol['x'][1]
@@ -122,5 +124,12 @@ if __name__=="__main__":
     import pandas as pd
     df = pd.DataFrame(outliers)
     print(df)
-    if args.output:
-        df.to_csv(args.output, index=False, sep='\t')
+    if args.output_outliers:
+        df.to_csv(args.output_outliers, index=False, sep='\t')
+
+    if args.output_tree:
+        from Bio import Phylo
+        T = tt.tree
+        for r, row in df.iterrows():
+            T.prune(row['sequence'])
+        Phylo.write(T, args.output_tree, 'newick')
