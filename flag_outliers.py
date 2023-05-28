@@ -56,13 +56,18 @@ def prepare_tree(T):
     for n in T.get_nonterminals(order='postorder'):
         n.dates = []
         n.tips = {}
+        n.bad_tip=False
         for c in n:
             if c.is_terminal():
+                c.bad_tip = False
+                if type(c.raw_date_constraint)!=float:
+                    c.keep=False
+                    c.bad_tip = True
+                    continue
                 if len(c.mutations)==0:
                     c.keep=False
-                    if c.raw_date_constraint is not None:
-                        n.dates.append(c.raw_date_constraint)
-                        n.tips[c.name]={'date':c.raw_date_constraint}
+                    n.dates.append(c.raw_date_constraint)
+                    n.tips[c.name]={'date':c.raw_date_constraint}
                 else:
                     c.keep=True
                     c.dates = [c.raw_date_constraint]
@@ -113,13 +118,32 @@ if __name__=="__main__":
 
     outliers = []
     for n in tt.tree.find_clades():
-        if not n.keep: continue
+        if not n.keep:
+            if n.bad_tip:
+                outliers.append({"sequence":n.name, "z_score":np.nan,
+                             "expected_date":np.nan, "given_date":np.nan,
+                             "date_input":str(dates.get(n.name,None)),
+                             "diagnosis": "bad_date"})
+            continue
         for tip, s in n.tips.items():
+            diagnosis=''
             if np.abs(s['z'])>args.cutoff*res['z_stddev']:
+                muts = n.nmuts if n.is_terminal() else 0.0
+                parent_tau = n.up.tau if n.is_terminal() else n.tau
+                if s['z']<0:
+                    if np.abs(s['date']-parent_tau) > muts/mu:
+                        diagnosis='date_too_early'
+                    else:
+                        diagnosis = 'excess_mutations'
+                else:
+                    diagnosis = 'date_too_late'
+
                 outliers.append({"sequence": tip,
                                  "z_score": s['z']/res['z_stddev'],
                                  "expected_date": n.tau,
-                                 "given_date": s['date']})
+                                 "given_date": s['date'],
+                                 "date_input":str(dates.get(tip, None)),
+                                 "diagnosis": diagnosis})
 
     import pandas as pd
     df = pd.DataFrame(outliers)
