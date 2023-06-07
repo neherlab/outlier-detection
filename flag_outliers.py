@@ -49,7 +49,7 @@ def calc_scores(T, sigma=None, mu=None):
                 cost += (mu*(c.tau-n.tau) - c.nmuts)**2/(c.nmuts+1)
         n_tips += n.observations
 
-    res = 0.5*cost + np.log(2*np.pi*(sigma_sq+0.1))*n_tips*0.5
+    res = 0.5*cost + np.log(2*np.pi*sigma_sq)*n_tips*0.5
     return {'cost':res, 'z_stddev':np.std(z_distribution)}
 
 def prepare_tree(T):
@@ -87,6 +87,7 @@ if __name__=="__main__":
     parser.add_argument('--tree', type=str, help='tree file in newick format')
     parser.add_argument('--aln', type=str, help='alignment file in fasta format')
     parser.add_argument('--cutoff', type=float, default=4.0, help="z-score used to flag outliers")
+    parser.add_argument('--reroot', action="store_true", help="reroot the tree")
     parser.add_argument('--optimize', action="store_true", help="optimize sigma and mu")
     parser.add_argument('--dates', type=str, help='csv/tsv file with dates for each sequence')
     parser.add_argument('--output-outliers', type=str, help='file for outliers')
@@ -95,7 +96,7 @@ if __name__=="__main__":
     args = parser.parse_args()
     dates = parse_dates(args.dates)
     tt = TreeTime(gtr='JC69', tree=args.tree, aln=args.aln, verbose=1, dates=dates)
-    tt.clock_filter(n_iqd=4, reroot='least-squares')
+    tt.clock_filter(n_iqd=4, reroot='least-squares' if args.reroot else None)
     if args.aln:
         tt.infer_ancestral_sequences(prune_short=True, marginal=True)
 
