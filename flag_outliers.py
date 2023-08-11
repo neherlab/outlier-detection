@@ -100,7 +100,7 @@ if __name__=="__main__":
     if args.aln:
         tt.infer_ancestral_sequences(prune_short=True, marginal=True)
 
-    pruned_tips = prepare_tree(tt.tree)
+    prepare_tree(tt.tree)
 
     mu = tt.clock_model['slope']*tt.data.full_length
     # magic number: allowing for slack in timing equivalent to 3 mutations
@@ -113,7 +113,7 @@ if __name__=="__main__":
         mu = sol['x'][0]
         sigma = sol['x'][1]
 
-    print(f"Calculating node timings using {mu=:1.3e}/year and {sigma=:1.3e}years")
+    print(f"Calculating node timings using {mu=:1.3e}/year and {sigma=:1.3e} years")
     res = calc_scores(tt.tree, mu=mu, sigma=sigma)
 
 
