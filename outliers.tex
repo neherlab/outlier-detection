@@ -49,9 +49,11 @@ It will be useful to define the average time $\bar{t}_i$ and the number of obser
     \partial_{\tau_k} \LH  = \mu\frac{(\mu(\tau_k - \tau_{p_k}) -  d_k)}{d_k+1} +  n_k\frac{(\tau_k-\bar{t}_k)}{\sigma^2} -  \mu\sum_{c\in k} \frac{(\mu(\tau_{c} - \tau_{k}) - d_c)}{d_c+1} = 0
 \end{equation}
 
-The resulting times can then be plugged into $\LH$ and we can optimize $\sigma$ and maybe $\mu$.
-Once those are optimized, we can compare each nodes sampling time to its distribution.
+The resulting times can then be plugged into $\LH$, and we can optimize $\sigma$ and maybe $\mu$.
+Once those are optimized, we can compare each node sampling time to its distribution.
 If we did the forward-backward distributions, we could also look at the leave-on-out signal.
+
+
 
 \section*{Forward-backward solution}
 For a terminal node $k$, the optimal position given the position of the parent $\tau_{p_k}$ is
@@ -83,11 +85,34 @@ Once all the root $\tau$ is known, all other $\tau_k$ can be calculated in one b
 The optimal timings can be calculated in linear time, along with the cost-function. This cost-function can then be optimized for $\sigma$ and $\mu$.
 
 
+\section*{Optimizing $\sigma$ and $\mu$}
+Differentiating the log-LH with respect to $\mu$, we have
+\begin{equation}
+    \frac{\partial\LH}{\partial \mu}  = \sum_i \frac{\mu(\tau_i - \tau_{p_i})^2 - (\tau_i - \tau_{p_i})d_i}{2(d_i+1)} = \sum_i \frac{\mu(\tau_i - \tau_{p_i})^2 - (\tau_i - \tau_{p_i})d_i}{2(d_i+1)} = \mu \sum_i \frac{(\tau_i - \tau_{p_i})^2}{2(d_i+1)} - \sum_i \frac{(\tau_i - \tau_{p_i})d_i}{2(d_i+1)} = 0
+\end{equation}
+and therefore
+\begin{equation}
+    \mu = \frac{\sum_i \frac{(\tau_i - \tau_{p_i})d_i}{(d_i+1)}}{\sum_i \frac{(\tau_i - \tau_{p_i})^2}{(d_i+1)}}
+\end{equation}
+The values of $\tau$ of course depend on the choice of $\mu$ and this problem therefore has to be solved iteratively.
+
+The optimization with respect to $\sigma$ does not work as naively expected. Iteration drives $\sigma$ to small values and tends to result in underestimation of the evolutionary rate.
+This phenomenon is similar to the issues observed in the Gaussian tree-regression that requires large tip variances.
+My current thinking is that small $\sigma$ or small tip variance results in "local fits" where similar sequences that were sampled several months apart drive down the rate estimate.
+
+The second derivative of the rate $\mu$, which is the inverse confidence of the rate estimate, is simply
+\begin{equation}
+    \sum_i \frac{(\tau_i - \tau_{p_i})^2}{2(d_i+1)}
+\end{equation}
+and the error in $\mu$
+\begin{equation}
+    \Delta \mu = \left(\sum_i \frac{(\tau_i - \tau_{p_i})^2}{2(d_i+1)}\right)^{-1/2}
+\end{equation}
 
 
-
-
-
-
+\section*{Coalesence prior}
+One reason for the underestimation of the rate could be that the coalescence prior is not properly accounted for.
+Coalescence will shorten branches and therefore increase the rate estimate.
+The coalenscence prior is proportional to the contemporary lineages. But in principle a linear cost on branch length should be possible to implement.
 
 \end{document}
