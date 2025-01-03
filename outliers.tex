@@ -113,6 +113,25 @@ and the error in $\mu$
 \section*{Coalesence prior}
 One reason for the underestimation of the rate could be that the coalescence prior is not properly accounted for.
 Coalescence will shorten branches and therefore increase the rate estimate.
-The coalenscence prior is proportional to the contemporary lineages. But in principle a linear cost on branch length should be possible to implement.
+The coalescence prior is proportional to the contemporary lineages. But in principle a linear cost on branch length should be possible to implement.
+Augmenting the negative log-LH with a term that accounts for coalescence, yields
+\begin{equation}
+    \LH  = \sum_i \left(\frac{(\mu(\tau_i - \tau_{p_i}) - d_i)^2}{2(d_i+1)} + \int_{\tau_{p_i}}^{\tau_i}\frac{k(t)-1}{2T_c}dt  + \sum_{\alpha \in s_i} \frac{(t_\alpha-\tau_i)^2}{2\sigma^2} \right)
+\end{equation}
+Here we ignored the non-exponential pre-factor which should introduce a term $n\log T_c$ similar to the normalization of the Gaussians.
+If we differentiate $\LH$ with respect to $\tau_k$, we pick up terms that correspond to the differential of the upper and lower limit of the integral.
+\begin{equation}
+    \partial_{\tau_k} \LH  =\mu\frac{(\mu(\tau_k - \tau_{p_k}) -  d_k)}{d_k+1}  + \gamma_k(|k| - 1) +  n_k\frac{(\tau_k-\bar{t}_k)}{\sigma^2} -  \mu\sum_{c\in k} \frac{(\mu(\tau_{c} - \tau_{k}) - d_c)}{d_c+1}
+\end{equation}
+where $\gamma_k = (k_k-1)/T_c$ is the coalescence rate at node $k$ and $|k|$ is the number of children of $k$.
+The recursion relations above can be readily adapted to include the coalescence term:
+Wherever we have a $\tau_k$ in the numerator, we have to subtract $\gamma_k(|k|-1)$.
 
+Again, this is a procedure that needs to be done iteratively since the coalescence rate depends on the values of $\tau$ across the tree.
+
+strictly speaking, the coalescence terms from the parent branch and the child branches have slightly different weights:
+\begin{equation}
+    \gamma_k(|k| - 1) = \frac{|k|m_k - (m_k - 1)}{T_c} = \frac{(|k| - 1)m_k + 1}{T_c} = \frac{(|k| - 1)m_k}{T_c} + \frac{1}{T_c}
+\end{equation}
+where the last term $\frac{1}{T_c}$ is accounts for the difference in rate before and after the merger.
 \end{document}
