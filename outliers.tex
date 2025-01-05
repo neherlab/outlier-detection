@@ -31,15 +31,15 @@ To spot such outliers sensitively, we model the distribution in time for samples
     P(t|\tau_i, \sigma) = e^{-\frac{(t-\tau_i)^2}{2\sigma^2}}/\sqrt{2\pi\sigma^2}
 \end{equation}
 Here $\tau_i$ is the time when most samples of this genotype are around, $\sigma$ is the width of this distribution, which could correspond to the growth and decline of a variant or clade.
-Different genotypes are phylogenetically related and the molecular clock constrains how the $\tau_i$ change along the tree.
-For simplicity, we will models this as a Gaussian as well.
+Different genotypes are phylogenetically related, and the molecular clock constrains how the $\tau_i$ change along the tree.
+For simplicity, we will model this as a Gaussian as well.
 Referring to the parent of $i$ as $p_i$, we have for the full log-LH
 \begin{equation}
     \LH  = \sum_i \left(\frac{(\mu(\tau_i - \tau_{p_i}) - d_i)^2}{2(d_i+1)} + \sum_{\alpha \in s_i} \frac{(t_\alpha-\tau_i)^2}{2\sigma^2} \right)
 \end{equation}
 where $d_i$ is the number of mutations between $i$ and $p_i$.
 We want to optimize this with respect to the genotype timings $\tau_i$.
-Diffentiating with respect to $\tau_k$, we have
+Differentiating with respect to $\tau_k$, we have
 \begin{equation}
     \partial_{\tau_k} \LH  = \mu\frac{(\mu(\tau_k - \tau_{p_k}) - d_k)}{d_k+1} + \sum_{\alpha \in s_k} \frac{(\tau_k-t_\alpha)}{\sigma^2} -  \sum_{c\in k} \mu\frac{(\mu(\tau_{c} - \tau_{k}) - d_c)}{d_c+1} = 0
 \end{equation}
@@ -75,20 +75,20 @@ Which can again be solved for $\tau_k$ and is a linear function of $\tau_{p_k}$.
     \tau_k =\left(\frac{n_k}{\sigma^2} + \frac{\mu^2}{d_k+1} + \mu^2\sum_{c\in k} \frac{1-b_c}{d_c+1}\right)^{-1}\left(
     \frac{n_k \bar{t}_k}{\sigma^2} + \mu\frac{\mu\tau_{p_k} + d_k}{d_k+1} + \mu \sum_{c\in k}\frac{\mu a_c - d_c}{d_c+1}\right) = a + b \tau_{p_k}
 \end{equation}
-At the root, the term from the parent is absent and their is no conditioning on $\tau_{p_k}$ anymore
+At the root, the term from the parent is absent and there is no conditioning on $\tau_{p_k}$ anymore
 \begin{equation}
     \tau_k =\left(\frac{n_k}{\sigma^2} + \mu^2\sum_{c\in k} \frac{1-b_c}{d_c+1}\right)^{-1}\left(
-    \frac{n_k \bar{t}_k}{\sigma^2} + \mu \sum_{c\in k}\frac{\mu a_c - d_c}{d_c+1}\right) = a + b \tau_{p_k}
+    \frac{n_k \bar{t}_k}{\sigma^2} + \mu \sum_{c\in k}\frac{\mu a_c - d_c}{d_c+1}\right) = a
 \end{equation}
-Once all the root $\tau$ is known, all other $\tau_k$ can be calculated in one backward pass.
+Once $a$ and thus $\tau$  at the root are known, all other $\tau_k$ can be calculated in one forward pass.
 
-The optimal timings can be calculated in linear time, along with the cost-function. This cost-function can then be optimized for $\sigma$ and $\mu$.
+Therefore, the optimal timings can be calculated in linear time, along with the cost-function. This cost-function can then be optimized for $\sigma$ and $\mu$.
 
 
-\section*{Optimizing $\sigma$ and $\mu$}
+\section*{Finding the optimal mutation rate $\mu$}
 Differentiating the log-LH with respect to $\mu$, we have
 \begin{equation}
-    \frac{\partial\LH}{\partial \mu}  = \sum_i \frac{\mu(\tau_i - \tau_{p_i})^2 - (\tau_i - \tau_{p_i})d_i}{2(d_i+1)} = \sum_i \frac{\mu(\tau_i - \tau_{p_i})^2 - (\tau_i - \tau_{p_i})d_i}{2(d_i+1)} = \mu \sum_i \frac{(\tau_i - \tau_{p_i})^2}{2(d_i+1)} - \sum_i \frac{(\tau_i - \tau_{p_i})d_i}{2(d_i+1)} = 0
+    \frac{\partial\LH}{\partial \mu}  = \sum_i \frac{\mu(\tau_i - \tau_{p_i})^2 - (\tau_i - \tau_{p_i})d_i}{d_i+1} = \sum_i \frac{\mu(\tau_i - \tau_{p_i})^2 - (\tau_i - \tau_{p_i})d_i}{d_i+1} = \mu \sum_i \frac{(\tau_i - \tau_{p_i})^2}{d_i+1} - \sum_i \frac{(\tau_i - \tau_{p_i})d_i}{d_i+1} = 0
 \end{equation}
 and therefore
 \begin{equation}
@@ -96,19 +96,25 @@ and therefore
 \end{equation}
 The values of $\tau$ of course depend on the choice of $\mu$ and this problem therefore has to be solved iteratively.
 
-The optimization with respect to $\sigma$ does not work as naively expected. Iteration drives $\sigma$ to small values and tends to result in underestimation of the evolutionary rate.
-This phenomenon is similar to the issues observed in the Gaussian tree-regression that requires large tip variances.
-My current thinking is that small $\sigma$ or small tip variance results in "local fits" where similar sequences that were sampled several months apart drive down the rate estimate.
-
-The second derivative of the rate $\mu$, which is the inverse confidence of the rate estimate, is simply
+The second derivative of likelihood with respect to the rate $\mu$, which is the inverse confidence of the rate estimate, is simply
 \begin{equation}
-    \sum_i \frac{(\tau_i - \tau_{p_i})^2}{2(d_i+1)}
+    \sum_i \frac{(\tau_i - \tau_{p_i})^2}{d_i+1}
 \end{equation}
 and the error in $\mu$
 \begin{equation}
-    \Delta \mu = \left(\sum_i \frac{(\tau_i - \tau_{p_i})^2}{2(d_i+1)}\right)^{-1/2}
+    \Delta \mu = \left(\sum_i \frac{(\tau_i - \tau_{p_i})^2}{d_i+1}\right)^{-1/2}
 \end{equation}
 
+The above estimate is derived from the curvature of the likelihood at fixed $\tau$.
+A more accurate estimate would be given by accounting for the covariance of the root timing and the estimate rate.
+To do so, we require the Hessian of the log likelihood.
+\begin{equation}
+    \frac{\partial^2 L}{\partial^2\tau_k^2} = \mu^2\sum_{c\in k}\frac{1}{d_c+1}
+\end{equation}
+\begin{equation}
+    \frac{\partial^2 L}{\partial \tau_k \partial\mu} = -\mu \sum_{c\in k}\frac{2(\tau_{c} - \tau_{k}) - d_c}{d_c+1} -
+\end{equation}
+The covariance matrix is then given by the inverse of the Hessian.
 
 \section*{Coalesence prior}
 One reason for the underestimation of the rate could be that the coalescence prior is not properly accounted for.
@@ -134,4 +140,27 @@ strictly speaking, the coalescence terms from the parent branch and the child br
     \gamma_k(|k| - 1) = \frac{|k|m_k - (m_k - 1)}{T_c} = \frac{(|k| - 1)m_k + 1}{T_c} = \frac{(|k| - 1)m_k}{T_c} + \frac{1}{T_c}
 \end{equation}
 where the last term $\frac{1}{T_c}$ is accounts for the difference in rate before and after the merger.
+
+Optimizing the node times in presence of a coalescence prior is challenging, since the number of concurrent lineages is discontinuous.
+To circumvent this, we use an initial rooting and tree to calculate the number of concurrent lineages for every node and never update them. They should remain constant unless the branching order of the tree changes during optimization.
+
+In practical terms, the hessian is sometimes no longer positive definite when $T_c$ is too small, or $\sigma$ is too large. In these cases, it seems that the ``sloppyness" of the system along with the large ``pull'' by the coalescent prior leads to loss of the optimum.
+
+The optimal $T_c$ itself can be estimated from differentiating the log likelihood with respect to $T_c$:
+\begin{equation}
+    \frac{\partial \LH}{\partial T_c} = \frac{1}{T_c}\sum_{n\in internal} (|n_c|-1) - \frac{1}{2T_c^2} \int dt |k|(|k|-1)
+\end{equation}
+where $|k|$ is the number of concurrent lineages at time $t$ and $|n_c|$ is the number of children of node $n$.
+The sum of $|n_c|-1$ is simply the number of terminal nodes. The optimal $T_c$ is thus given by
+\begin{equation}
+    T_c = \frac\int dt |k|(|k|-1)}{2N}
+\end{equation}
+where $N$ is the total number of tips.
+
+\section{other notes}
+The optimization with respect to $\sigma$ does not work as naively expected. Iteration drives $\sigma$ to small values and tends to result in underestimation of the evolutionary rate.
+This phenomenon is similar to the issues observed in the Gaussian tree-regression that requires large tip variances.
+My current thinking is that small $\sigma$ or small tip variance results in "local fits" where similar sequences that were sampled several months apart drive down the rate estimate.
+
+
 \end{document}
